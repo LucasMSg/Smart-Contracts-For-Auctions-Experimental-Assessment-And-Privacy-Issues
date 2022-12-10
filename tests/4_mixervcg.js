@@ -13,7 +13,9 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
   it('auction', async function () {
     const auctioneer = accounts[0];
     const bidders = [];
-    for (let i = 0; i < 5; i++) {
+    const participants = [auctioneer];
+    for (let i = 1; i < accounts.length / 2; i++) {
+      participants.push(accounts[i]);
       bidders.push(accounts[i]);
     }
 
@@ -46,15 +48,15 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
         bids[i],
         passwords[i],
         {
-          from: accounts[i],
+          from: bidders[i],
         }
       );
       console.log('gas estimation for calculateHash is ' + amountOfGas);
 
       let encrypted = await vcgContract.calculateHash(bids[i], passwords[i], {
-        from: accounts[i],
+        from: bidders[i],
       });
-      let result1 = await vcgContract.bid(encrypted, {from: accounts[i]});
+      let result1 = await vcgContract.bid(encrypted, {from: bidders[i]});
       console.log('bid ' + i + ' gas ' + result1.receipt.gasUsed);
     }
 
@@ -86,7 +88,7 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
       let result = await vcgContract.encryptedBidding(
         encryptedbid,
         encryptedAddress,
-        {from: accounts[i]}
+        {from: bidders[i]}
       );
       console.log('reveal ' + i + ' gas ' + result.receipt.gasUsed);
     }
@@ -116,7 +118,6 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
       const revbids = await vcgContract.retreiveAllBids('0x' + privateKeys[0], {
         from: auctioneer,
       });
-      console.log('decripted bids ' + revbids);
 
       amountOfGas = await vcgContract.retreiveAllAddresses.estimateGas(
         '0x' + privateKeys[0],
@@ -129,14 +130,12 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
         '0x' + privateKeys[0],
         {from: auctioneer}
       );
-      console.log('decripted addresses ' + revAddresses);
 
       let bidValues = [];
       for (let i = 0; i < bidders.length; i++) {
         let text = revbids[i].slice(0, 4);
         bidValues.push(parseInt(text.replace(/\0/g, '')));
       }
-      console.log('bids ' + bidValues);
       return {bidValues, revAddresses};
     }
 
@@ -212,3 +211,4 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
     }
   });
 });
+

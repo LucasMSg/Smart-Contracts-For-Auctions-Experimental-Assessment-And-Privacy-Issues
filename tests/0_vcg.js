@@ -6,14 +6,14 @@ contract('Original VCG test', async (accounts) => {
     const auctioneer = accounts[0];
     const bidders = [];
     for (let i = 0; i < accounts.length / 2; i++) {
-      bidders.push(accounts[i]);
+      bidders.push(accounts[i+1]);
     }
 
     //table
     const bids = [];
 
     //generating random bids
-    for (let i = 0; i < accounts.length / 2; i++) {
+    for (let i = 0; i < bidders.length; i++) {
       let bid = Math.floor(Math.random() * 100 + 1);
       bids.push(bid);
     }
@@ -63,11 +63,11 @@ contract('Original VCG test', async (accounts) => {
 
     async function executePayemnt(i) {
       let j = 0;
-      while (winners[i] != accounts[j]) {
+      while (winners[i] != bidders[j]) {
         j++;
       }
       let payment = await vcgContract.payment({
-        from: accounts[j],
+        from: bidders[j],
         value: prices[i],
       });
       console.log('payment gas ' + payment.receipt.gasUsed);
@@ -76,7 +76,7 @@ contract('Original VCG test', async (accounts) => {
     //Auction execution
     await openAuction();
 
-    for (let i = 0; i < accounts.length / 2; i++) {
+    for (let i = 0; i < bidders.length; i++) {
       await bid(i);
     }
 
@@ -87,3 +87,4 @@ contract('Original VCG test', async (accounts) => {
     }
   });
 });
+

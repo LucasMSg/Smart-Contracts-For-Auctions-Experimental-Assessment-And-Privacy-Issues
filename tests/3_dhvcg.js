@@ -13,11 +13,13 @@ contract('VCG with Diffie–Hellman test', async (accounts) => {
   it('auction', async function () {
     const auctioneer = accounts[0];
     const bidders = [];
-    for (let i = 0; i < accounts.length / 2; i++) {
+    const participants = [auctioneer];
+    for (let i = 1; i < accounts.length / 2; i++) {
+      participants.push(accounts[i]);
       bidders.push(accounts[i]);
     }
 
-    const privateKeys = await SmartDHX.exec(bidders);
+    const privateKeys = await SmartDHX.exec(participants);
 
     //tables
     const bids = [];
@@ -178,3 +180,4 @@ contract('VCG with Diffie–Hellman test', async (accounts) => {
     }
   });
 });
+

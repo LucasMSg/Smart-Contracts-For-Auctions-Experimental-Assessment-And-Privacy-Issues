@@ -1,5 +1,4 @@
 const ctrs = require('./ctrs.js');
-
 const VCG = artifacts.require('VCGSep');
 
 contract('VCG separated results test', async (accounts) => {
@@ -7,14 +6,14 @@ contract('VCG separated results test', async (accounts) => {
     const auctioneer = accounts[0];
     const bidders = [];
     for (let i = 0; i < accounts.length / 2; i++) {
-      bidders.push(accounts[i]);
+      bidders.push(accounts[i+1]);
     }
 
     //table
+    //const bids = [ 94, 95, 13, 17, 71 ];
     const bids = [];
-
     //generating random bids
-    for (let i = 0; i < accounts.length / 2; i++) {
+    for (let i = 0; i < bidders.length; i++) {
       let bid = Math.floor(Math.random() * 100 + 1);
       bids.push(bid);
     }
@@ -75,7 +74,7 @@ contract('VCG separated results test', async (accounts) => {
 
     async function executePayemnt(i) {
       let payment = await vcgContract.payment({
-        from: accounts[winners[i]],
+        from: bidders[winners[i]],
         value: prices[i],
       });
       console.log('payment  gas ' + payment.receipt.gasUsed);
@@ -83,7 +82,7 @@ contract('VCG separated results test', async (accounts) => {
 
     await openAuction();
 
-    for (let i = 0; i < accounts.length / 2; i++) {
+    for (let i = 0; i < bidders.length; i++) {
       await bid(i);
     }
 
@@ -94,3 +93,4 @@ contract('VCG separated results test', async (accounts) => {
     }
   });
 });
+

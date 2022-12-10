@@ -1,13 +1,12 @@
 const ctrs = require('./ctrs.js');
-
 const VCG = artifacts.require('VCGCR');
 
 contract('VCG Commit-Reveal test', async (accounts) => {
   it('auction', async function () {
     const auctioneer = accounts[0];
     const bidders = [];
-    for (let i = 0; i < accounts.length; i++) {
-      bidders.push(accounts[i]);
+    for (let i = 0; i < accounts.length / 2; i++) {
+      bidders.push(accounts[i+1]);
     }
 
     //tables
@@ -15,7 +14,7 @@ contract('VCG Commit-Reveal test', async (accounts) => {
     const passwords = [];
 
     //generating random bids and passwords
-    for (let i = 0; i < accounts.length / 2; i++) {
+    for (let i = 0; i < bidders.length; i++) {
       let randomstring = Math.random().toString(36).slice(-8);
       passwords.push(randomstring);
       let bid = Math.floor(Math.random() * 100 + 1);
@@ -38,14 +37,14 @@ contract('VCG Commit-Reveal test', async (accounts) => {
         bids[i],
         passwords[i],
         {
-          from: accounts[i],
+          from: bidders[i],
         }
       );
 
       console.log('gas estimation for calculateHash is ' + amountOfGas);
 
       let hashedData = await vcgContract.calculateHash(bids[i], passwords[i], {
-        from: accounts[i],
+        from: bidders[i],
       });
 
       let bidTx = await vcgContract.bid(hashedData, {from: bidders[i]});
@@ -75,10 +74,9 @@ contract('VCG Commit-Reveal test', async (accounts) => {
 
     async function getReveledBids() {
       const reveledBids = [];
-      for (let i = 0; i < accounts.length / 2; i++) {
+      for (let i = 0; i < bidders.length; i++) {
         let amountOfGas = await vcgContract.bids.estimateGas(i);
         console.log('gas estimation for reading bids is ' + amountOfGas);
-        5;
 
         let bidsFromContract = await vcgContract.bids(i);
         reveledBids.push(bidsFromContract);
@@ -131,13 +129,13 @@ contract('VCG Commit-Reveal test', async (accounts) => {
     //Auction execution
     await openAuction();
 
-    for (let i = 0; i < accounts.length / 2; i++) {
+    for (let i = 0; i < bidders.length; i++) {
       await bid(i);
     }
 
     await stopCommit();
 
-    for (let i = 0; i < accounts.length / 2; i++) {
+    for (let i = 0; i < bidders.length; i++) {
       await revealBid(i);
     }
 
@@ -150,3 +148,4 @@ contract('VCG Commit-Reveal test', async (accounts) => {
     }
   });
 });
+
