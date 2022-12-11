@@ -14,7 +14,7 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
     const auctioneer = accounts[0];
     const bidders = [];
     const participants = [auctioneer];
-    for (let i = 1; i < accounts.length / 2; i++) {
+    for (let i = 0; i < accounts.length / 2; i++) {
       participants.push(accounts[i]);
       bidders.push(accounts[i]);
     }
@@ -133,8 +133,7 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
 
       let bidValues = [];
       for (let i = 0; i < bidders.length; i++) {
-        let text = revbids[i].slice(0, 4);
-        bidValues.push(parseInt(text.replace(/\0/g, '')));
+        bidValues.push(parseInt(revbids[i].slice(0, 2)));
       }
       return {bidValues, revAddresses};
     }
