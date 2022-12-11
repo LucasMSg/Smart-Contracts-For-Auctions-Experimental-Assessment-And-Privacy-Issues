@@ -19,7 +19,7 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
       bidders.push(accounts[i]);
     }
 
-    const privateKeys = await SmartDHX.exec(bidders);
+    const privateKeys = await SmartDHX.exec(participants);
 
     //tables
     const bids = [];
