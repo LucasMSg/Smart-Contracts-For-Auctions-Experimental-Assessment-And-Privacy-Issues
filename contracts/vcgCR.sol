@@ -32,7 +32,7 @@ contract VCGCR is Owned {
     enum Stages {Close, Open, Reveal, Payment}
 
     modifier atStage(Stages _stage) {
-        require(stage == _stage, "Wrong pooling stage. Action not allowed.");
+        require(stage == _stage, "Wrong stage. Action not allowed.");
         _;
     }
 
