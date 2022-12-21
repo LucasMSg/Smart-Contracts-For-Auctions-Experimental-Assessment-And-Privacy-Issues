@@ -101,7 +101,6 @@ contract VCGCR is Owned {
     function closeAuction(uint256[] calldata bidsX)
         external
         view
-        onlyOwner
         atStage(Stages.Reveal)
         returns (uint256[] memory results, uint256[] memory winnerIndexes)
     {
