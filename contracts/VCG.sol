@@ -137,7 +137,7 @@ contract VCG is Owned {
             prices[i] = (price_i);
         }
         address[] memory winners = new address[](ctrs.length);
-        winners = agentsSlice();
+        winners = agentsSlice(labels);
         emit EndAuction(winners, prices);
 
         for (uint256 i = 0; i < winners.length; i++) {
@@ -162,11 +162,11 @@ contract VCG is Owned {
     }
 
     //Slices agrents array, to generate a winners table
-    function agentsSlice() internal view returns (address[] memory winners) {
+    function agentsSlice(uint256[] memory labels) internal view returns (address[] memory winners) {
         winners = new address[](ctrs.length);
         if (ctrs.length < agents.length) {
             for (uint256 i = 0; i < ctrs.length; i++) {
-                winners[i] = (agents[i]);
+                winners[i] = (agents[labels[i]]);
             }
             return winners;
         } else {
@@ -187,3 +187,4 @@ contract VCG is Owned {
         }
     }
 }
+

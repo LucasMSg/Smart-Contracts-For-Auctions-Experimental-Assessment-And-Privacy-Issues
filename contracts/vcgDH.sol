@@ -43,14 +43,11 @@ contract VCGDH is Owned {
     Stages public stage = Stages.Close; //start with a closed auction
 
     uint256[] public ctrs;
-    bytes[] public bids;
-    bytes32[] public cryptedBids;
+    bytes[] public encryptedBids;
+    bytes32[] public hashedBids;
     address[] public agents;
     //mapping to keep track of bid
     mapping(address => uint256) public indexes;
-
-    //bytes[] private cryptedBidsSharedKey;
-    mapping(uint256 => bytes) internal cryptedBidsSharedKey;
 
     //struct for payment
     struct Price {
@@ -70,16 +67,16 @@ contract VCGDH is Owned {
         nextStage();
         //delete winnersAndPrices;
         deleteMap();
-        delete cryptedBids;
-        delete bids;
+        delete hashedBids;
+        delete encryptedBids;
         delete agents;
         ctrs = newCTRs;
         emit Open(ctrs);
     }
 
-    function bid(bytes32 cryptedBid) external atStage(Stages.Commit) {
-        cryptedBids.push(cryptedBid);
-        bids.push("0x0"); //start bid array
+    function bid(bytes32 hashedBid) external atStage(Stages.Commit) {
+        hashedBids.push(hashedBid);
+        encryptedBids.push("0x0"); //start encryptedBids array
         agents.push(msg.sender);
         indexes[msg.sender] = agents.length - 1;
     }
@@ -102,7 +99,7 @@ contract VCGDH is Owned {
 
     function encryptedBidding(bytes calldata encryptedBid) external atStage(Stages.Reveal) {
         uint256 index = indexes[msg.sender];
-        bids[index] = encryptedBid;
+        encryptedBids[index] = encryptedBid;
     }
 
     //view function to retreive bids with the sahred key
@@ -110,19 +107,19 @@ contract VCGDH is Owned {
         string[] memory bidsPasswords = new string[](agents.length);
 
         for (uint256 i = 0; i < agents.length; i++) {
-            bidsPasswords[i] = decrypt(bids[i], sharedKey);
+            bidsPasswords[i] = decrypt(encryptedBids[i], sharedKey);
         }
         return bidsPasswords;
     }
 
-    function closeAuction(uint256[] calldata bidsX)
+    function closeAuction(uint256[] calldata bids)
         external
         view
         atStage(Stages.Reveal)
         returns (uint256[] memory results, uint256[] memory winnerIndexes)
     {
-        uint256 length = bidsX.length;
-        uint256[] memory data = bidsX;
+        uint256 length = bids.length;
+        uint256[] memory data = bids;
         uint256[] memory labels = new uint256[](length);
 
         for (uint256 j = 0; j < length; j++) {
@@ -137,10 +134,10 @@ contract VCGDH is Owned {
         }
         uint256[] memory result = new uint256[](ctrs.length);
 
-        for (uint256 i = 0; (i < ctrs.length && i < bidsX.length); i++) {
+        for (uint256 i = 0; (i < ctrs.length && i < bids.length); i++) {
             uint256 price_i = 0;
             for (uint256 j = (i + 1); j < (ctrs.length + 1); j++) {
-                price_i = price_i + (bidsX[labels[j]] * (getElement(ctrs, j - 1) - getElement(ctrs, j)));
+                price_i = price_i + (bids[labels[j]] * (getElement(ctrs, j - 1) - getElement(ctrs, j)));
             }
             result[i] = price_i;
         }
@@ -169,9 +166,9 @@ contract VCGDH is Owned {
 
     function cancelAuction() external {
         require(stage != Stages.Payment, "Cannot cancel ongoing auction");
-        if (bids.length > 0) {
-            delete bids;
-            delete cryptedBids;
+        if (encryptedBids.length > 0) {
+            delete encryptedBids;
+            delete hashedBids;
             deleteMap();
             delete agents;
             delete ctrs;
@@ -182,7 +179,7 @@ contract VCGDH is Owned {
         return (keccak256(abi.encodePacked(bid, password, msg.sender)));
     }
 
-    function decrypt(bytes memory message, bytes calldata key) internal pure returns (string memory) {
+    function decrypt(bytes memory message, bytes calldata key) public pure returns (string memory) {
         bytes memory plainText = new bytes(message.length);
         bytes memory messageinKey = abi.encode(key);
         for (uint256 i = 0; i < (message.length); i++) {
@@ -215,3 +212,4 @@ contract VCGDH is Owned {
         }
     }
 }
+

@@ -16,7 +16,7 @@ contract('VCG with Diffie–Hellman test', async (accounts) => {
     const participants = [auctioneer];
     for (let i = 0; i < accounts.length / 2; i++) {
       participants.push(accounts[i]);
-      bidders.push(accounts[i]);
+      bidders.push(accounts[i + 1]);
     }
 
     const privateKeys = await SmartDHX.exec(participants);
@@ -29,12 +29,9 @@ contract('VCG with Diffie–Hellman test', async (accounts) => {
     for (let i = 0; i < bidders.length; i++) {
       let randomstring = Math.random().toString(36).slice(-8);
       passwords.push(randomstring);
-      let bid = Math.floor(Math.random() * 100 + 1);
+      let bid = Math.floor(Math.random() * 100);
       bids.push(bid);
     }
-
-    console.log('bids ' + bids);
-    console.log('passwords ' + passwords);
 
     //deploying contract
     const vcgContract = await VCG.new();
@@ -48,16 +45,16 @@ contract('VCG with Diffie–Hellman test', async (accounts) => {
         bids[i],
         passwords[i],
         {
-          from: accounts[i],
+          from: bidders[i],
         }
       );
 
       console.log('gas estimation for calculateHash is ' + amountOfGas);
 
       let encrypted = await vcgContract.calculateHash(bids[i], passwords[i], {
-        from: accounts[i],
+        from: bidders[i],
       });
-      let result1 = await vcgContract.bid(encrypted, {from: accounts[i]});
+      let result1 = await vcgContract.bid(encrypted, {from: bidders[i]});
       console.log('bid ' + i + ' gas ' + result1.receipt.gasUsed);
     }
 
@@ -77,7 +74,7 @@ contract('VCG with Diffie–Hellman test', async (accounts) => {
       );
 
       let result = await vcgContract.encryptedBidding(encryptedbid, {
-        from: accounts[i],
+        from: bidders[i],
       });
       console.log('reveal ' + i + ' gas ' + result.receipt.gasUsed);
     }
@@ -108,14 +105,11 @@ contract('VCG with Diffie–Hellman test', async (accounts) => {
       const revbids = await vcgContract.retreiveAllBids('0x' + privateKeys[0], {
         from: auctioneer,
       });
-      console.log('decripted bids');
-      console.log(revbids);
 
       let bidValues = [];
       for (let i = 0; i < bidders.length; i++) {
         bidValues.push(parseInt(revbids[i].slice(0, 2)));
       }
-      console.log('bids ' + bidValues);
       return bidValues;
     }
 
@@ -151,9 +145,10 @@ contract('VCG with Diffie–Hellman test', async (accounts) => {
 
     async function executePayemnt(i) {
       let payment = await vcgContract.payment({
-        from: accounts[winners[i]],
+        from: bidders[winners[i]],
         value: prices[i],
       });
+      console.log(bidders[winners[i]] + ' payed ' + prices[i]);
       console.log('payment  gas ' + payment.receipt.gasUsed);
     }
 

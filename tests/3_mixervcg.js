@@ -16,7 +16,7 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
     const participants = [auctioneer];
     for (let i = 0; i < accounts.length / 2; i++) {
       participants.push(accounts[i]);
-      bidders.push(accounts[i]);
+      bidders.push(accounts[i + 1]);
     }
 
     const privateKeys = await SmartDHX.exec(participants);
@@ -33,8 +33,9 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
       bids.push(bid);
     }
 
-    console.log('bids ' + bids);
-    console.log('passwords ' + passwords);
+    console.log(bidders);
+    console.log(bids);
+    console.log(passwords);
 
     //deploying contract
     const vcgContract = await VCG.new();
@@ -74,6 +75,9 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
         '0x' + privateKeys[i]
       );
       let newAddress = accounts[i + 4];
+      console.log('account and new address');
+      console.log(bidders[i]);
+      console.log(newAddress);
       amountOfGas = await vcgContract.encryptAddress.estimateGas(
         newAddress,
         '0x' + privateKeys[i]
@@ -159,7 +163,7 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
 
       const winnerAddresses = [];
       for (let i = 0; i < winnerIndexes.length; i++) {
-        winnerAddresses.push(revAddresses[i]);
+        winnerAddresses.push(revAddresses[winnerIndexes[i]]);
       }
 
       const finapublishResultslResult = await vcgContract.publishResults(
@@ -170,8 +174,6 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
       console.log(
         'publish results gas ' + finapublishResultslResult.receipt.gasUsed
       );
-      console.log(winnerAddresses);
-      console.log(prices);
       return {winnerAddresses, prices};
     }
 
@@ -184,6 +186,7 @@ contract('VCG with Diffie–Hellman Mixer test', async (accounts) => {
         from: accounts[j],
         value: prices[i],
       });
+      console.log(accounts[j] + ' payed ' + prices[i]);
       console.log('payment  gas ' + payment.receipt.gasUsed);
     }
 

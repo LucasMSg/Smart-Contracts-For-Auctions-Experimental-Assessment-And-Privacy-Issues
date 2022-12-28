@@ -27,10 +27,10 @@ contract Owned {
     }
 }
 
-contract VCGCR is Owned {
+contract VCGCRTg is Owned {
     //different stages of the auction
     enum Stages {Close, Open, Reveal, Payment}
-
+    //MUDAR DE OPEN PRA COMMIT
     modifier atStage(Stages _stage) {
         require(stage == _stage, "Wrong stage. Action not allowed.");
         _;
@@ -44,7 +44,7 @@ contract VCGCR is Owned {
 
     uint256[] public ctrs;
     uint256[] public bids;
-    bytes32[] public cryptedBids;
+    bytes32[] public hashedBids;
     address[] public agents;
     //mapping to keep track of bid
     mapping(address => uint256) public indexes;
@@ -55,7 +55,7 @@ contract VCGCR is Owned {
         bool payed;
     }
     //mapping from winners to prices
-    mapping(uint256 => Price) internal winnersAndPrices;
+    mapping(address => Price) internal winnersAndPrices;
 
     //Events
     //Event emmited when an auction is opened, broadcasting the ctrs
@@ -71,14 +71,14 @@ contract VCGCR is Owned {
         //delete winnersAndPrices;
         deleteMap();
         delete bids;
-        delete cryptedBids;
+        delete hashedBids;
         delete agents;
         ctrs = newCTRs;
         emit Open(ctrs);
     }
 
-    function bid(bytes32 cryptedBid) external atStage(Stages.Open) {
-        cryptedBids.push(cryptedBid);
+    function bid(bytes32 hashedBid) external atStage(Stages.Open) {
+        hashedBids.push(hashedBid);
         bids.push(0); //start bids
         agents.push(msg.sender);
         indexes[msg.sender] = agents.length - 1;
@@ -92,21 +92,19 @@ contract VCGCR is Owned {
         uint256 index = indexes[msg.sender];
         require(agents[index] == msg.sender, "bidder not found");
         require(
-            cryptedBids[index] == keccak256(abi.encodePacked(value, password, msg.sender)),
+            hashedBids[index] == keccak256(abi.encodePacked(value, password, msg.sender)),
             "wrong value or password"
         );
         bids[index] = value;
     }
 
-    function closeAuction(uint256[] calldata bidsX)
-        external
-        view
-        atStage(Stages.Reveal)
-        returns (uint256[] memory results, uint256[] memory winnerIndexes)
-    {
-        uint256 length = bidsX.length;
-        uint256[] memory data = bidsX;
-        uint256[] memory labels = new uint256[](length);
+    //Function for closing auction
+    //sort bids and calculate winners and corresponding prices
+    function closeAuction() external onlyOwner atStage(Stages.Reveal) returns (uint256[] memory Prices) {
+        require(bids.length > 0, "No bids to be auctioned");
+        uint256 length = bids.length;
+        uint256[] memory data = bids;
+        uint256[] memory labels = bids;
 
         for (uint256 j = 0; j < length; j++) {
             labels[j] = j;
@@ -114,38 +112,15 @@ contract VCGCR is Owned {
 
         for (uint256 j = 0; j < length; j++) {
             uint256 i = j;
-
             while ((i > 0) && (data[i] >= data[i - 1])) {
                 swap(i, data, labels);
                 i--;
             }
         }
 
-        uint256[] memory result = new uint256[](ctrs.length);
+        uint256[] memory result = calculatePrice(labels);
 
-        for (uint256 i = 0; (i < ctrs.length && i < bidsX.length); i++) {
-            uint256 price_i = 0;
-
-            for (uint256 j = (i + 1); j < (ctrs.length + 1); j++) {
-                price_i = price_i + (bidsX[labels[j]] * (getElement(ctrs, j - 1) - getElement(ctrs, j)));
-            }
-            result[i] = price_i;
-        }
-
-        return (result, labels);
-    }
-
-    function publishResults(uint256[] calldata winnersIndex, uint256[] calldata prices)
-        external
-        onlyOwner
-        atStage(Stages.Reveal)
-    {
-        nextStage();
-        //require same size
-        require(winnersIndex.length == prices.length, "insufficient data");
-        for (uint256 i = 0; i < winnersIndex.length; i++) {
-            winnersAndPrices[winnersIndex[i]] = Price({price: prices[i], payed: false}); //prices[i];
-        }
+        return result;
     }
 
     function cancelAuction() external onlyOwner {
@@ -153,7 +128,7 @@ contract VCGCR is Owned {
         stage = Stages.Close;
         if (bids.length > 0) {
             delete bids;
-            delete cryptedBids;
+            delete hashedBids;
             deleteMap();
             delete agents;
             delete ctrs;
@@ -161,14 +136,35 @@ contract VCGCR is Owned {
     }
 
     function payment() external payable atStage(Stages.Payment) {
-        uint256 index = indexes[msg.sender];
-        require(winnersAndPrices[index].price != 0, "not a winner");
-        require(msg.value == winnersAndPrices[index].price, "not enought money");
-        winnersAndPrices[index].payed = true;
+        require(winnersAndPrices[msg.sender].price != 0, "not a winner");
+        require(msg.value == winnersAndPrices[msg.sender].price, "not enought money");
+        winnersAndPrices[msg.sender].payed = true;
     }
 
     function calculateHash(uint256 value, string calldata password) external view returns (bytes32) {
         return (keccak256(abi.encodePacked(value, password, msg.sender)));
+    }
+
+    //Internal function to calculate winner's prices following VCG's algorithm
+    function calculatePrice(uint256[] memory labels) internal returns (uint256[] memory) {
+        uint256[] memory prices = new uint256[](ctrs.length);
+        for (uint256 i = 0; (i < ctrs.length && i < agents.length); i++) {
+            uint256 price_i = 0;
+
+            for (uint256 j = (i + 1); j < (ctrs.length + 1); j++) {
+                price_i = price_i + (getElement(bids, labels[j]) * (getElement(ctrs, j - 1) - getElement(ctrs, j)));
+            }
+            prices[i] = (price_i);
+        }
+        address[] memory winners = new address[](ctrs.length);
+        winners = agentsSlice(labels);
+        emit EndAuction(winners, prices);
+
+        for (uint256 i = 0; i < winners.length; i++) {
+            winnersAndPrices[winners[i]] = Price({price: prices[i], payed: false});
+        }
+        nextStage();
+        return prices;
     }
 
     function swap(
@@ -184,6 +180,19 @@ contract VCGCR is Owned {
         labels[i - 1] = tempLabels;
     }
 
+    //Slices agrents array, to generate a winners table
+    function agentsSlice(uint256[] memory labels) internal view returns (address[] memory winners) {
+        winners = new address[](ctrs.length);
+        if (ctrs.length < agents.length) {
+            for (uint256 i = 0; i < ctrs.length; i++) {
+                winners[i] = (agents[labels[i]]);
+            }
+            return winners;
+        } else {
+            return agents;
+        }
+    }
+
     function getElement(uint256[] storage list, uint256 i) internal view returns (uint256 value) {
         if (i < list.length) return list[i];
         else return 0;
@@ -191,7 +200,8 @@ contract VCGCR is Owned {
 
     function deleteMap() internal {
         for (uint256 i = 0; i < agents.length; i++) {
-            delete winnersAndPrices[i];
+            delete winnersAndPrices[agents[i]];
         }
     }
 }
+

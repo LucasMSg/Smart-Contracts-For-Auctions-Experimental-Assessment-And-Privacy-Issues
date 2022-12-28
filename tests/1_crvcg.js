@@ -1,23 +1,23 @@
 const ctrs = require('./ctrs.js');
-const VCG = artifacts.require('VCGCR');
+const VCG = artifacts.require('VCGCRTg');
 
-contract('VCG Commit-Reveal test', async (accounts) => {
+contract('VCG Commit-Reveal', async (accounts) => {
   it('auction', async function () {
     const auctioneer = accounts[0];
     const bidders = [];
     for (let i = 0; i < accounts.length / 2; i++) {
-      bidders.push(accounts[i+1]);
+      bidders.push(accounts[i + 1]);
     }
 
     //tables
     const bids = [];
     const passwords = [];
-
+    
     //generating random bids and passwords
     for (let i = 0; i < bidders.length; i++) {
       let randomstring = Math.random().toString(36).slice(-8);
       passwords.push(randomstring);
-      let bid = Math.floor(Math.random() * 100 + 1);
+      let bid = Math.floor(Math.random() * 100);
       bids.push(bid);
     }
     console.log('printing bids and passwords');
@@ -72,58 +72,35 @@ contract('VCG Commit-Reveal test', async (accounts) => {
       console.log('stop commit gas ' + stopCommitTx.receipt.gasUsed);
     }
 
-    async function getReveledBids() {
-      const reveledBids = [];
-      for (let i = 0; i < bidders.length; i++) {
-        let amountOfGas = await vcgContract.bids.estimateGas(i);
-        console.log('gas estimation for reading bids is ' + amountOfGas);
-
-        let bidsFromContract = await vcgContract.bids(i);
-        reveledBids.push(bidsFromContract);
-      }
-      return reveledBids;
-    }
-
-    async function calculateWinnersAndPublishResults() {
+    async function closeAuction() {
       let winners = [];
       let prices = [];
 
-      const amountOfGas = await vcgContract.closeAuction.estimateGas(
-        reveledBids,
-        {
-          from: auctioneer,
-        }
-      );
-
-      console.log('gas estimation for close auction is ' + amountOfGas);
-
-      const finalResult = await vcgContract.closeAuction(reveledBids, {
+      const finalResult = await vcgContract.closeAuction({
         from: auctioneer,
       });
+      console.log('close auction gas ' + finalResult.receipt.gasUsed);
 
-      prices = finalResult.results.toString().split(',');
-      winners = finalResult.winnerIndexes
-        .toString()
-        .split(',')
-        .slice(0, prices.length);
+      winners = finalResult.logs[0].args.agents;
+      pricesInBNFormat = finalResult.logs[0].args.prices;
 
-      const finapublishResultslResult = await vcgContract.publishResults(
-        winners,
-        prices,
-        {from: auctioneer}
-      );
-      console.log(
-        'publish results gas ' + finapublishResultslResult.receipt.gasUsed
-      );
+      for (let i = 0; i < pricesInBNFormat.length; i++) {
+        prices.push(pricesInBNFormat[i].toNumber());
+      }
       return {winners, prices};
     }
 
     async function executePayemnt(i) {
+      let j = 0;
+      while (winners[i] != bidders[j]) {
+        j++;
+      }
       let payment = await vcgContract.payment({
-        from: bidders[winners[i]],
+        from: bidders[j],
         value: prices[i],
       });
-      console.log('payment  gas ' + payment.receipt.gasUsed);
+      console.log(bidders[j] + ' payed ' + prices[i]);
+      console.log('payment gas ' + payment.receipt.gasUsed);
     }
 
     //Auction execution
@@ -139,9 +116,7 @@ contract('VCG Commit-Reveal test', async (accounts) => {
       await revealBid(i);
     }
 
-    const reveledBids = await getReveledBids();
-
-    const {winners, prices} = await calculateWinnersAndPublishResults();
+    const {winners, prices} = await closeAuction();
 
     for (let i = 0; i < prices.length; i++) {
       await executePayemnt(i);
