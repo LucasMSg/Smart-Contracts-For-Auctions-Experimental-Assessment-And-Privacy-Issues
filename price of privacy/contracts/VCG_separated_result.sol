@@ -43,7 +43,7 @@ contract VCGSep is Owned {
         bool payed;
     }
     //mapping from winners to prices
-    mapping(uint256 => Price) internal winnersAndPrices;
+    mapping(address => Price) internal winnersAndPrices;
 
     //Events
     //Event emmited when an auction is opened, broadcasting the ctrs
@@ -128,13 +128,11 @@ contract VCGSep is Owned {
 
     function payment() external payable {
         require(!isOpen, "Ongoing auction");
-        uint256 index = 0;
-        while (msg.sender != agents[index]) {
-            index++;
-        }
-        require(winnersAndPrices[index].price != 0, "not a winner");
-        require(msg.value == winnersAndPrices[index].price, "not enought money");
-        winnersAndPrices[index].payed = true;
+        //require address in list
+        require(winnersAndPrices[msg.sender].price != 0, "not a winner");
+        //require payment equal to map
+        require(msg.value == winnersAndPrices[msg.sender].price, "not enought money");
+        winnersAndPrices[msg.sender].payed = true;
     }
 
     //function for the auctioneer to publish the auction results
@@ -144,7 +142,7 @@ contract VCGSep is Owned {
         require(winnersIndex.length == prices.length, "insufficient data");
         isOpen = false;
         for (uint256 i = 0; i < winnersIndex.length; i++) {
-            winnersAndPrices[winnersIndex[i]] = Price({price: prices[i], payed: false}); //prices[i];
+            winnersAndPrices[agents[winnersIndex[i]]] = Price({price: prices[i], payed: false}); //prices[i];
         }
     }
 
@@ -171,7 +169,8 @@ contract VCGSep is Owned {
 
     function deleteMap() internal {
         for (uint256 i = 0; i < agents.length; i++) {
-            delete winnersAndPrices[i];
+            delete winnersAndPrices[agents[i]];
         }
     }
 }
+
