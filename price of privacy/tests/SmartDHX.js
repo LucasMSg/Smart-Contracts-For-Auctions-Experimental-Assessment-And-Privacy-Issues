@@ -1,5 +1,4 @@
-var ethers = require('ethers');
-var SEEDS = require('./seeds.js');
+const SEEDS = require('./seeds.js');
 
 const MultipartySmartDiffieHellmanController = artifacts.require(
   'MultipartySmartDiffieHellmanController'
@@ -9,26 +8,26 @@ const MultipartySmartDiffieHellmanClient = artifacts.require(
 );
 
 module.exports = {
-  exec: async function exec(bidders) {
+  exec: async function exec(participants) {
     console.log('SmartDiffieHellman protocol execution');
 
     //Diffie–Hellman key generation
     // Deploys MultipartySmartDiffieHellmanController
-    var clients = [];
+    let clients = [];
     const controller = await MultipartySmartDiffieHellmanController.new();
-    let receipt = await web3.eth.getTransactionReceipt(
+    const receipt = await web3.eth.getTransactionReceipt(
       controller.transactionHash
     );
     console.log(
       'gas used for controller deployment ' + receipt.gasUsed.toString()
     );
 
-    for (let i = 0; i < bidders.length; i++) {
+    for (let i = 0; i < participants.length; i++) {
       //Deploy clients
-      let client = await MultipartySmartDiffieHellmanClient.new(
+      const client = await MultipartySmartDiffieHellmanClient.new(
         controller.address
       );
-      let receipt = await web3.eth.getTransactionReceipt(
+      const receipt = await web3.eth.getTransactionReceipt(
         client.transactionHash
       );
       console.log(
@@ -50,9 +49,9 @@ module.exports = {
     }
 
     // generating Aa's for clients
-    var clientAas = [];
-    for (let i = 0; i < bidders.length; i++) {
-      let client = clients[i];
+    const clientAas = [];
+    for (let i = 0; i < participants.length; i++) {
+      const client = clients[i];
 
       clientAas.push(await client.generateA.call([SEEDS.SEEDS[i]]));
 
@@ -60,12 +59,9 @@ module.exports = {
       assert.ok(clientAas[i]['_a'], 'Missing _a');
     }
 
-    //sort clients
-    let sortTx = await controller.sortClients();
-    console.log(
-      'gas used for controller sortClients ' + sortTx.receipt.gasUsed
-    );
-
+    //request first keys
+    const startTx = await controller.start();
+    console.log('gas used for controller start ' + startTx.receipt.gasUsed);
     let contractClients = [];
 
     for (let j = 0; j < clients.length; j++) {
@@ -75,37 +71,30 @@ module.exports = {
       ];
     }
 
-    let jsSort = [...contractClients];
+    const jsSort = [...contractClients];
     jsSort.sort();
 
     clients.sort((l, r) => {
-      let lStr = parseInt((l + '').substr(2), 16);
-      let rStr = parseInt((r + '').substr(2), 16);
       return l.address.toLowerCase().localeCompare(r.address.toLowerCase());
     });
 
     assert.equal(
       contractClients.length,
-      bidders.length,
+      participants.length,
       'Sort did not work (wrong length)'
     );
     assert.deepEqual(contractClients, jsSort, 'Clients not correctly sorted');
-
-    //request first keys
-    let startTx = await controller.start();
-    console.log('gas used for controller start ' + startTx.receipt.gasUsed);
-
     //start will make clients request their own keys, and will store 0 as their key
 
-    for (let i = 0; i < bidders.length; i++) {
-      let client = clients[i];
+    for (let i = 0; i < participants.length; i++) {
+      const client = clients[i];
 
       assert.ok(
         await client.requested.call(0),
         'Client does not have any request'
       );
 
-      let reqKeys = await client.requestedKeys.call();
+      const reqKeys = await client.requestedKeys.call();
       //	requestkeys is a view it doesn't do anything
 
       assert.ok(reqKeys['_clientsKeys'], 'Request has no _clientKeys');
@@ -124,10 +113,10 @@ module.exports = {
     let found = false;
 
     do {
-      for (let i = 0; i < bidders.length; i++) {
-        let client = clients[i];
+      for (let i = 0; i < participants.length; i++) {
+        const client = clients[i];
         found = (await client.getRequestedSize.call()) > 0;
-        let requested = await client.requestedKeys.call();
+        const requested = await client.requestedKeys.call();
         //is recalculating requested
         assert.equal(
           requested['_clientsKeys'].length,
@@ -136,15 +125,15 @@ module.exports = {
         );
 
         for (let j = 0; j < requested['_clientsKeys'].length; j++) {
-          let clientsKey = requested['_clientsKeys'][j];
-          let key = requested['_keys'][j];
+          const clientsKey = requested['_clientsKeys'][j];
+          const key = requested['_keys'][j];
 
-          let answerKey =
+          const answerKey =
             key == 0
               ? clientAas[i]['_A']
               : await client.generateAExtB.call(clientAas[i]['_a'], key);
           //if key=0 save A, else generateAExtB
-          let answerTx = await client.answer(clientsKey, answerKey);
+          const answerTx = await client.answer(clientsKey, answerKey);
           console.log(
             'gas used for client ' + i + ' answer ' + answerTx.receipt.gasUsed
           );
@@ -154,10 +143,10 @@ module.exports = {
 
     // Calculate secret key
     let privateKeys = [];
-    for (let i = 0; i < bidders.length; i++) {
-      let client = clients[i];
+    for (let i = 0; i < participants.length; i++) {
+      const client = clients[i];
 
-      let finalKey = await client.getFinalKey.call(
+      const finalKey = await client.getFinalKey.call(
         clients.map((c) => c.address)
       );
 
@@ -170,10 +159,11 @@ module.exports = {
     // Check if all keys are the same
     assert.equal(
       Object.keys(privateKeys).length,
-      bidders.length,
+      participants.length,
       'Not all clients have a secret key'
     );
-    for (let i = 0; i < bidders.length - 1; i++) {
+    for (let i = 0; i < participants.length - 1; i++) {
+      console.log(privateKeys[i].toString());
       assert.equal(
         privateKeys[i] + '',
         privateKeys[i + 1] + '',
@@ -184,3 +174,4 @@ module.exports = {
     return privateKeys;
   },
 };
+
