@@ -119,8 +119,8 @@ contract VCGMixer is Owned {
         encryptedBids[index] = encryptedBid;
     }
 
-    //view function to retreive bids with the sahred key
-    function retreiveAllBids(bytes calldata sharedKey) external view returns (string[] memory) {
+    //view function to retrieve bids with the sahred key
+    function retrieveAllBids(bytes calldata sharedKey) external view returns (string[] memory) {
         string[] memory bidsPasswords = new string[](agents.length);
         for (uint256 i = 0; i < agents.length; i++) {
             bidsPasswords[i] = decryptBid(encryptedBids[i], sharedKey);
@@ -128,7 +128,7 @@ contract VCGMixer is Owned {
         return bidsPasswords;
     }
 
-    function retreiveAllAddresses(bytes calldata sharedKey) external view returns (address[] memory) {
+    function retrieveAllAddresses(bytes calldata sharedKey) external view returns (address[] memory) {
         address[] memory newAddresses = new address[](agents.length);
         for (uint256 i = 0; i < agents.length; i++) {
             newAddresses[i] = decryptAddress(encryptedAddresses[i], sharedKey);

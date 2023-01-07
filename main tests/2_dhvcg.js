@@ -94,15 +94,15 @@ contract('VCG with Diffie–Hellman test', async (accounts) => {
     }
 
     async function getReveledBids() {
-      const amountOfGas = await vcgContract.retreiveAllBids.estimateGas(
+      const amountOfGas = await vcgContract.retrieveAllBids.estimateGas(
         '0x' + privateKeys[0],
         {
           from: auctioneer,
         }
       );
-      console.log('gas estimation for retreiveAllBids is ' + amountOfGas);
+      console.log('gas estimation for retrieveAllBids is ' + amountOfGas);
 
-      const revbids = await vcgContract.retreiveAllBids('0x' + privateKeys[0], {
+      const revbids = await vcgContract.retrieveAllBids('0x' + privateKeys[0], {
         from: auctioneer,
       });
 

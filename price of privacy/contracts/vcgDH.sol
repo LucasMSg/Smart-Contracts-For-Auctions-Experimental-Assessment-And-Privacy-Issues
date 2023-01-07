@@ -102,8 +102,8 @@ contract VCGDH is Owned {
         encryptedBids[index] = encryptedBid;
     }
 
-    //view function to retreive bids with the sahred key
-    function retreiveAllBids(bytes calldata sharedKey) external view atStage(Stages.Reveal) returns (string[] memory) {
+    //view function to retrieve bids with the sahred key
+    function retrieveAllBids(bytes calldata sharedKey) external view atStage(Stages.Reveal) returns (string[] memory) {
         string[] memory bidsPasswords = new string[](agents.length);
 
         for (uint256 i = 0; i < agents.length; i++) {
